@@ -2,7 +2,7 @@ name: Daily Log
 
 on:
   schedule:
-    - cron: '0 9,15,21 * * *'
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -11,15 +11,44 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Write daily entry
+      - name: Maybe commit today
         run: |
-          DATE=$(date +"%Y-%m-%d %H:%M:%S")
-          echo "[$DATE] System active." >> activity.log
-
-      - name: Commit and push
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "chore: daily log $(date +%Y-%m-%d-%H%M)"
-          git push
+          DATE=$(date +"%Y-%m-%d")
+          HOUR=$(date +"%H")
+          
+          # Pick a random target for today (15-25 commits), seeded by date so it's consistent per day
+          TARGET=$(( ( $(date +%Y%m%d) % 11 ) + 15 ))
+          
+          # Count how many commits already happened today
+          DONE=$(git log --oneline --after="$DATE 00:00" --before="$DATE 23:59" 2>/dev/null | wc -l | tr -d ' ')
+          
+          # Remaining hours left in the day
+          HOURS_LEFT=$(( 23 - HOUR ))
+          
+          # Only commit if we still need more and there's time left
+          # Probabilistic: commit with chance = remaining_needed / hours_left
+          NEEDED=$(( TARGET - DONE ))
+          
+          if [ "$NEEDED" -le 0 ]; then
+            echo "Already hit today's target of $TARGET commits. Skipping."
+            exit 0
+          fi
+          
+          if [ "$HOURS_LEFT" -le 0 ]; then
+            HOURS_LEFT=1
+          fi
+          
+          # Roll the dice: commit with probability NEEDED/HOURS_LEFT (capped at 1)
+          ROLL=$(( RANDOM % HOURS_LEFT ))
+          
+          if [ "$ROLL" -lt "$NEEDED" ]; then
+            DATE_FULL=$(date +"%Y-%m-%d %H:%M:%S")
+            echo "[$DATE_FULL] active." >> activity.log
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add .
+            git commit -m "chore: log $(date +%Y-%m-%d-%H%M)"
+            git push
+          else
+            echo "Skipping this hour (pacing for target $TARGET, done $DONE, needed $NEEDED)"
+          fi
