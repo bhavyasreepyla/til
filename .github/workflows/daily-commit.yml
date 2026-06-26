@@ -44,8 +44,8 @@ jobs:
           if [ "$ROLL" -lt "$NEEDED" ]; then
             DATE_FULL=$(date +"%Y-%m-%d %H:%M:%S")
             echo "[$DATE_FULL] active." >> activity.log
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git config user.name "bhavyasreepyla"
+            git config user.email "151440469+bhavyasreepyla@users.noreply.github.com"
             git add .
             git commit -m "chore: log $(date +%Y-%m-%d-%H%M)"
             git push
